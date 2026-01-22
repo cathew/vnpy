@@ -212,6 +212,11 @@ class BarGenerator:
         """
         Update new tick data into generator.
         """
+        # try:
+        #     print(f"[DEBUG] update_tick: tick.datetime={tick.datetime}, last_price={tick.last_price}")
+        # except Exception as e:
+        #     print(f"[DEBUG] Exception in printing tick: {e}")
+
         new_minute: bool = False
 
         # Filter tick data with 0 last price
@@ -224,6 +229,12 @@ class BarGenerator:
             (self.bar.datetime.minute != tick.datetime.minute)
             or (self.bar.datetime.hour != tick.datetime.hour)
         ):
+            # print(f"[DEBUG] Minute boundary reached. Current bar datetime: {self.bar.datetime}")
+            # 新增2025/03/01：在一分钟结束前，先完成自定义指标计算
+            self._finalize_custom_metrics(self.bar)
+            # 新增2025/03/01
+            # print(f"[DEBUG] Finalized bar metrics: {self.bar.__dict__}")
+
             self.bar.datetime = self.bar.datetime.replace(
                 second=0, microsecond=0
             )
@@ -244,6 +255,41 @@ class BarGenerator:
                 close_price=tick.last_price,
                 open_interest=tick.open_interest
             )
+            # 新增2025/03/01：初始化自定义指标累加器extra_metrics
+            # 初始化 extra_metrics 累计器，同时初始化 TWAP相关字段
+            # 对于第一笔 tick，时间权重设为 1（因为无法计算前后间隔）
+            self.bar.extra_metrics = {
+                'bid_price_1_sum': tick.bid_price_1,   # 累计买一价
+                'ask_price_1_sum': tick.ask_price_1,   # 累计卖一价
+                'bid_volume_1_sum': tick.bid_volume_1, # 累计买一量
+                'ask_volume_1_sum': tick.ask_volume_1, # 累计卖一量
+                # 'spread_ratio_1_sum': 0 if (tick.ask_price_1==0) and (tick.bid_price_1==0) else (tick.ask_price_1 - tick.bid_price_1) / ((tick.ask_price_1 + tick.bid_price_1) / 2),
+                'bid_price_2_sum': tick.bid_price_2,   # 累计买二价
+                'ask_price_2_sum': tick.ask_price_2,   # 累计卖二价
+                'bid_volume_2_sum': tick.bid_volume_2, # 累计买二量
+                'ask_volume_2_sum': tick.ask_volume_2, # 累计卖二量
+                # 'spread_ratio_2_sum': 0 if (tick.ask_price_2==0) and (tick.bid_price_2==0) else (tick.ask_price_2 - tick.bid_price_2) / ((tick.ask_price_2 + tick.bid_price_2) / 2) if tick.ask_price_2 != 0 else 0,
+                'bid_price_3_sum': tick.bid_price_3,   # 累计买三价
+                'ask_price_3_sum': tick.ask_price_3,   # 累计卖三价
+                'bid_volume_3_sum': tick.bid_volume_3, # 累计买三量
+                'ask_volume_3_sum': tick.ask_volume_3, # 累计卖三量
+                # 'spread_ratio_3_sum': 0 if (tick.ask_price_3==0) and (tick.bid_price_3==0) else (tick.ask_price_3 - tick.bid_price_3) / ((tick.ask_price_3 + tick.bid_price_3) / 2) if tick.ask_price_3 != 0 else 0,
+                'bid_price_4_sum': tick.bid_price_4,   # 累计买四价
+                'ask_price_4_sum': tick.ask_price_4,   # 累计卖四价
+                'bid_volume_4_sum': tick.bid_volume_4, # 累计买四量
+                'ask_volume_4_sum': tick.ask_volume_4, # 累计卖四量
+                # 'spread_ratio_4_sum': 0 if (tick.ask_price_4==0) and (tick.bid_price_4==0) else (tick.ask_price_4 - tick.bid_price_4) / ((tick.ask_price_4 + tick.bid_price_4) / 2) if tick.ask_price_4 != 0 else 0,
+                'bid_price_5_sum': tick.bid_price_5,   # 累计买五价
+                'ask_price_5_sum': tick.ask_price_5,   # 累计卖五价
+                'bid_volume_5_sum': tick.bid_volume_5, # 累计买五量
+                'ask_volume_5_sum': tick.ask_volume_5, # 累计卖五量
+                # 'spread_ratio_5_sum': 0 if (tick.ask_price_5==0) and (tick.bid_price_5==0) else (tick.ask_price_5 - tick.bid_price_5) / ((tick.ask_price_5 + tick.bid_price_5) / 2) if tick.ask_price_5 != 0 else 0,
+                'tick_count': 1,                     # tick 数量初始化为1
+                'price_time_sum': tick.last_price * 1,   # 第一笔 tick 权重为1
+                'time_weight_sum': 1                     # 累计权重初始化为1
+            }
+            # 新增2025/03/01
+            # print(f"[DEBUG] New bar created with extra_metrics: {self.bar.extra_metrics}")
         else:
             self.bar.high_price = max(self.bar.high_price, tick.last_price)
             if tick.high_price > self.last_tick.high_price:
@@ -257,6 +303,81 @@ class BarGenerator:
             self.bar.open_interest = tick.open_interest
             self.bar.datetime = tick.datetime
 
+            # 新增2025/03/01：更新自定义指标累加器
+            metrics = self.bar.extra_metrics
+            metrics['bid_price_1_sum'] += tick.bid_price_1
+            metrics['ask_price_1_sum'] += tick.ask_price_1
+            metrics['bid_volume_1_sum'] += tick.bid_volume_1
+            metrics['ask_volume_1_sum'] += tick.ask_volume_1
+            # if (tick.bid_price_1 == 0) and (tick.ask_price_1 == 0):
+            #     metrics['spread_ratio_1_sum'] += 0
+            # else:
+            #     metrics['spread_ratio_1_sum'] += (tick.ask_price_1 - tick.bid_price_1) / ((tick.ask_price_1 + tick.bid_price_1) / 2)
+            metrics['bid_price_2_sum'] += tick.bid_price_2
+            metrics['ask_price_2_sum'] += tick.ask_price_2
+            metrics['bid_volume_2_sum'] += tick.bid_volume_2
+            metrics['ask_volume_2_sum'] += tick.ask_volume_2
+            # if (tick.bid_price_2 == 0) and (tick.ask_price_2 == 0):
+            #     metrics['spread_ratio_2_sum'] += 0
+            # else:
+            #     metrics['spread_ratio_2_sum'] += (tick.ask_price_2 - tick.bid_price_2) / ((tick.ask_price_2 + tick.bid_price_2) / 2)
+            metrics['bid_price_3_sum'] += tick.bid_price_3
+            metrics['ask_price_3_sum'] += tick.ask_price_3
+            metrics['bid_volume_3_sum'] += tick.bid_volume_3
+            metrics['ask_volume_3_sum'] += tick.ask_volume_3
+            # if (tick.bid_price_3 == 0) and (tick.ask_price_3 == 0):
+            #     metrics['spread_ratio_3_sum'] += 0
+            # else:
+            #     metrics['spread_ratio_3_sum'] += (tick.ask_price_3 - tick.bid_price_3) / ((tick.ask_price_3 + tick.bid_price_3) / 2)
+            metrics['bid_price_4_sum'] += tick.bid_price_4
+            metrics['ask_price_4_sum'] += tick.ask_price_4
+            metrics['bid_volume_4_sum'] += tick.bid_volume_4
+            metrics['ask_volume_4_sum'] += tick.ask_volume_4
+            # if (tick.bid_price_4 == 0) and (tick.ask_price_4 == 0):
+            #     metrics['spread_ratio_4_sum'] += 0
+            # else:
+            #     metrics['spread_ratio_4_sum'] += (tick.ask_price_4 - tick.bid_price_4) / ((tick.ask_price_4 + tick.bid_price_4) / 2)
+            metrics['bid_price_5_sum'] += tick.bid_price_5
+            metrics['ask_price_5_sum'] += tick.ask_price_5
+            metrics['bid_volume_5_sum'] += tick.bid_volume_5
+            metrics['ask_volume_5_sum'] += tick.ask_volume_5
+            # if (tick.bid_price_5 == 0) and (tick.ask_price_5 == 0):
+            #     metrics['spread_ratio_5_sum'] += 0
+            # else:
+            #     metrics['spread_ratio_5_sum'] += (tick.ask_price_5 - tick.bid_price_5) / ((tick.ask_price_5 + tick.bid_price_5) / 2)    
+            # # 计算当前 tick 与上一 tick 的时间间隔（秒）
+            # if self.last_tick is not None:
+            #     delta = (tick.datetime - self.last_tick.datetime).total_seconds()
+            #     # 如果时间间隔小于0.5秒，设为0.5
+            #     if delta < 0.5:
+            #         delta = 0.5
+            # else:
+            #     delta = 1  # 如果没有上一个 tick，则设为1秒
+
+            # # 权重 = delta / 0.5
+            # weight = delta / 0.5
+            # metrics['price_time_sum'] += tick.last_price * weight
+            # metrics['time_weight_sum'] += weight
+            # metrics['tick_count'] += 1
+            # #新增2025/03/01
+            # # print(f"[DEBUG] Updated metrics: {metrics}")
+            
+            # 计算当前 tick 与上一 tick 的实际时间间隔（秒）
+            if self.last_tick is not None:
+                delta = (tick.datetime - self.last_tick.datetime).total_seconds()
+                # 如果出现负间隔或过小间隔，可视情况过滤或设为0
+                if delta <= 0:
+                    delta = 0
+            else:
+                # 第一笔 tick：我们没有 delta，可置为 0（不影响后续累加）
+                delta = 0
+
+            # 直接将时间差作为权重
+            metrics['price_time_sum'] += tick.last_price * delta
+            metrics['time_weight_sum'] += delta
+            # tick_count 仍然记录 tick 数量
+            metrics['tick_count'] += 1
+
         if self.last_tick:
             volume_change: float = tick.volume - self.last_tick.volume
             self.bar.volume += max(volume_change, 0)
@@ -265,6 +386,81 @@ class BarGenerator:
             self.bar.turnover += max(turnover_change, 0)
 
         self.last_tick = tick
+
+    #新增2025/03/01：新增_finalize_custom_metrics函数
+    def _finalize_custom_metrics(self, bar: BarData) -> None:
+        """
+        当一分钟K线结束时，计算自定义指标的最终值，并将其存入 bar 对象中
+        计算结果：
+          - avg_bid_price_1 = bid_price_sum / tick_count
+          - avg_ask_price_1 = ask_price_sum / tick_count
+          - sum_bid_volume_1 = bid_volume_sum
+          - sum_ask_volume_1 = ask_volume_sum
+          - avg_spread_ratio = spread_ratio_sum / tick_count
+          - tick_count = tick_count
+        """
+        metrics = bar.extra_metrics
+        count = metrics.get('tick_count', 0)
+        # print(f"[DEBUG] Finalizing metrics: {metrics}, tick_count={count}")
+        if count > 0:
+            bar.avg_bid_price_1 = round(metrics['bid_price_1_sum'] / count, 4)
+            bar.avg_ask_price_1 = round(metrics['ask_price_1_sum'] / count, 4)
+            bar.sum_bid_volume_1 = metrics['bid_volume_1_sum']
+            bar.sum_ask_volume_1 = metrics['ask_volume_1_sum']
+            # bar.avg_spread_ratio_1 = round(metrics['spread_ratio_1_sum'] / count, 10)
+            bar.avg_bid_price_2 = round(metrics['bid_price_2_sum'] / count, 4)
+            bar.avg_ask_price_2 = round(metrics['ask_price_2_sum'] / count, 4)
+            bar.sum_bid_volume_2 = metrics['bid_volume_2_sum']
+            bar.sum_ask_volume_2 = metrics['ask_volume_2_sum']
+            # bar.avg_spread_ratio_2 = round(metrics['spread_ratio_2_sum'] / count, 10)
+            bar.avg_bid_price_3 = round(metrics['bid_price_3_sum'] / count, 4)
+            bar.avg_ask_price_3 = round(metrics['ask_price_3_sum'] / count, 4)
+            bar.sum_bid_volume_3 = metrics['bid_volume_3_sum']
+            bar.sum_ask_volume_3 = metrics['ask_volume_3_sum']
+            # bar.avg_spread_ratio_3 = round(metrics['spread_ratio_3_sum'] / count, 10)
+            bar.avg_bid_price_4 = round(metrics['bid_price_4_sum'] / count, 4)
+            bar.avg_ask_price_4 = round(metrics['ask_price_4_sum'] / count, 4)
+            bar.sum_bid_volume_4 = metrics['bid_volume_4_sum']
+            bar.sum_ask_volume_4 = metrics['ask_volume_4_sum']
+            # bar.avg_spread_ratio_4 = round(metrics['spread_ratio_4_sum'] / count, 10)
+            bar.avg_bid_price_5 = round(metrics['bid_price_5_sum'] / count, 4)
+            bar.avg_ask_price_5 = round(metrics['ask_price_5_sum'] / count, 4)
+            bar.sum_bid_volume_5 = metrics['bid_volume_5_sum']
+            bar.sum_ask_volume_5 = metrics['ask_volume_5_sum']
+            # bar.avg_spread_ratio_5 = round(metrics['spread_ratio_5_sum'] / count, 10)
+            bar.tick_count = count
+            # 计算 TWAP：用 price_time_sum / time_weight_sum
+            bar.twap = round(metrics['price_time_sum'] / metrics['time_weight_sum'], 4)
+        else:
+            bar.avg_bid_price_1 = None
+            bar.avg_ask_price_1 = None
+            bar.sum_bid_volume_1 = 0
+            bar.sum_ask_volume_1 = 0
+            # bar.avg_spread_ratio_1 = None
+            bar.avg_bid_price_2 = None
+            bar.avg_ask_price_2 = None
+            bar.sum_bid_volume_2 = 0
+            bar.sum_ask_volume_2 = 0
+            # bar.avg_spread_ratio_2 = None
+            bar.avg_bid_price_3 = None
+            bar.avg_ask_price_3 = None
+            bar.sum_bid_volume_3 = 0
+            bar.sum_ask_volume_3 = 0
+            # bar.avg_spread_ratio_3 = None
+            bar.avg_bid_price_4 = None
+            bar.avg_ask_price_4 = None
+            bar.sum_bid_volume_4 = 0
+            bar.sum_ask_volume_4 = 0
+            # bar.avg_spread_ratio_4 = None
+            bar.avg_bid_price_5 = None
+            bar.avg_ask_price_5 = None
+            bar.sum_bid_volume_5 = 0
+            bar.sum_ask_volume_5 = 0
+            # bar.avg_spread_ratio_5 = None
+            bar.tick_count = 0
+            bar.twap = None
+        # print(f"[DEBUG] Finalized bar: {bar.__dict__}")
+    #新增2025/03/01
 
     def update_bar(self, bar: BarData) -> None:
         """
@@ -282,6 +478,7 @@ class BarGenerator:
         # If not inited, create window bar object
         if not self.window_bar:
             dt: datetime = bar.datetime.replace(second=0, microsecond=0)
+            ###原始代码
             self.window_bar = BarData(
                 symbol=bar.symbol,
                 exchange=bar.exchange,
@@ -291,7 +488,29 @@ class BarGenerator:
                 high_price=bar.high_price,
                 low_price=bar.low_price
             )
-        # Otherwise, update high/low price into window bar
+            ###原始代码
+        #     #新增2025/03/01
+        #     self.window_bar = BarData(
+        #         symbol=bar.symbol,
+        #         exchange=bar.exchange,
+        #         datetime=dt,
+        #         gateway_name=bar.gateway_name,
+        #         open_price=bar.open_price,
+        #         high_price=bar.high_price,
+        #         low_price=bar.low_price,
+        #         volume=bar.volume,
+        #         turnover=bar.turnover,
+        #         # 初始化自定义指标为当前1分钟bar的值
+        #         avg_bid_price_1 = bar.avg_bid_price_1,
+        #         avg_ask_price_1 = bar.avg_ask_price_1,
+        #         sum_bid_volume_1 = bar.sum_bid_volume_1,
+        #         sum_ask_volume_1 = bar.sum_ask_volume_1,
+        #         avg_spread_ratio = bar.avg_spread_ratio,
+        #         tick_count = bar.tick_count,
+        #         twap = bar.twap
+        #     )
+        #     #新增2025/03/01
+        # # Otherwise, update high/low price into window bar
         else:
             self.window_bar.high_price = max(
                 self.window_bar.high_price,
@@ -308,10 +527,51 @@ class BarGenerator:
         self.window_bar.turnover += bar.turnover
         self.window_bar.open_interest = bar.open_interest
 
+        # #新增2025/03/01
+        # # 对自定义指标进行聚合：假设使用简单的累计和再求平均（对于平均型指标）
+        # # 计算加权平均时，需要知道累计的1分钟 bar 数量（我们用 self.interval_count 累计）
+        # self.interval_count += 1
+        # # 这里假设各平均值用简单的加权平均
+        # # 将累计的1分钟 bar 的指标累加：
+        # # 对于 avg_bid_price_1、avg_ask_price_1：我们可以将各分钟的平均值累加再除以总数
+        # if self.window_bar.avg_bid_price_1 is None:
+        #     self.window_bar.avg_bid_price_1 = bar.avg_bid_price_1
+        # else:
+        #     self.window_bar.avg_bid_price_1 = (self.window_bar.avg_bid_price_1 * (self.interval_count - 1) + bar.avg_bid_price_1) / self.interval_count
+
+        # if self.window_bar.avg_ask_price_1 is None:
+        #     self.window_bar.avg_ask_price_1 = bar.avg_ask_price_1
+        # else:
+        #     self.window_bar.avg_ask_price_1 = (self.window_bar.avg_ask_price_1 * (self.interval_count - 1) + bar.avg_ask_price_1) / self.interval_count
+
+        # # 对于 sum_bid_volume_1 和 sum_ask_volume_1，直接累加
+        # self.window_bar.sum_bid_volume_1 += bar.sum_bid_volume_1
+        # self.window_bar.sum_ask_volume_1 += bar.sum_ask_volume_1
+
+        # # 对于 avg_spread_ratio，累加后平均
+        # if self.window_bar.avg_spread_ratio is None:
+        #     self.window_bar.avg_spread_ratio = bar.avg_spread_ratio
+        # else:
+        #     self.window_bar.avg_spread_ratio = (self.window_bar.avg_spread_ratio * (self.interval_count - 1) + bar.avg_spread_ratio) / self.interval_count
+
+        # # Tick 数量累加
+        # self.window_bar.tick_count += bar.tick_count
+
+        # # 对于 TWAP，累加1分钟 bar 的 TWAP，再加权平均
+        # if self.window_bar.twap is None:
+        #     self.window_bar.twap = bar.twap
+        # else:
+        #     self.window_bar.twap = (self.window_bar.twap * (self.interval_count - 1) + bar.twap) / self.interval_count
+        # #新增2025/03/01
+
         # Check if window bar completed
         if not (bar.datetime.minute + 1) % self.window:
+            # print(f"[DEBUG] 3-minute window complete at {bar.datetime}")
             self.on_window_bar(self.window_bar)
             self.window_bar = None
+            # #新增2025/03/01
+            # self.interval_count = 0
+            # #新增2025/03/01
 
     def update_bar_hour_window(self, bar: BarData) -> None:
         """"""
@@ -477,7 +737,12 @@ class BarGenerator:
         bar: BarData = self.bar
 
         if self.bar:
+            ###新增2026/01/19：自定义指标收尾
+            if getattr(bar, "extra_metrics", None):
+                self._finalize_custom_metrics(bar)
+            ###新增2026/01/19：自定义指标收尾
             bar.datetime = bar.datetime.replace(second=0, microsecond=0)
+            # print(f"[DEBUG] generate: calling on_bar with bar: {bar.__dict__}")
             self.on_bar(bar)
 
         self.bar = None

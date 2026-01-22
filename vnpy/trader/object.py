@@ -101,6 +101,40 @@ class BarData(BaseData):
     low_price: float = 0
     close_price: float = 0
 
+    # 新增2025/03/01：新增自定义指标字段：
+    avg_bid_price_1: Optional[float] = None      # 平均买一价
+    avg_ask_price_1: Optional[float] = None      # 平均卖一价
+    sum_bid_volume_1: float = 0.0                # 买一量之和
+    sum_ask_volume_1: float = 0.0                # 卖一量之和
+    # avg_spread_ratio_1: Optional[float] = None     # 平均 (ask_price_1 - bid_price_1) / ((ask_price_1 + bid_price_1)/2)
+    avg_bid_price_2: Optional[float] = None      # 平均买一价
+    avg_ask_price_2: Optional[float] = None      # 平均卖一价
+    sum_bid_volume_2: float = 0.0                # 买一量之和
+    sum_ask_volume_2: float = 0.0                # 卖一量之和
+    # avg_spread_ratio_2: Optional[float] = None     # 平均 (ask_price_2 - bid_price_2) / ((ask_price_2 + bid_price_2)/2)
+    avg_bid_price_3: Optional[float] = None      # 平均买一价
+    avg_ask_price_3: Optional[float] = None      # 平均卖一价
+    sum_bid_volume_3: float = 0.0                # 买一量之和
+    sum_ask_volume_3: float = 0.0                # 卖一量之和
+    # avg_spread_ratio_3: Optional[float] = None     # 平均 (ask_price_3 - bid_price_3) / ((ask_price_3 + bid_price_3)/2)
+    avg_bid_price_4: Optional[float] = None      # 平均买一价
+    avg_ask_price_4: Optional[float] = None      # 平均卖一价
+    sum_bid_volume_4: float = 0.0                # 买一量之和
+    sum_ask_volume_4: float = 0.0                # 卖一量之和
+    # avg_spread_ratio_4: Optional[float] = None     # 平均 (ask_price_4 - bid_price_4) / ((ask_price_4 + bid_price_4)/2)
+    avg_bid_price_5: Optional[float] = None      # 平均买一价
+    avg_ask_price_5: Optional[float] = None      # 平均卖一价
+    sum_bid_volume_5: float = 0.0                # 买一量之和
+    sum_ask_volume_5: float = 0.0                # 卖一量之和
+    # avg_spread_ratio_5: Optional[float] = None     # 平均 (ask_price_5 - bid_price_5) / ((ask_price_5 + bid_price_5)/2)
+    tick_count: int = 0                          # Tick 数量
+    twap: Optional[float] = None                 # 时间加权平均价格
+    # 新增2025/03/01
+
+    # 新增2025/03/01：额外的累加器，临时累计每分钟 tick 数据（在聚合过程中使用）
+    extra_metrics: dict = field(default_factory=dict)
+    # 新增2025/03/01
+
     def __post_init__(self) -> None:
         """"""
         self.vt_symbol: str = f"{self.symbol}.{self.exchange.value}"
