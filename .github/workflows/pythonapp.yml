@@ -49,9 +49,10 @@ jobs:
     - name: Install dependencies
       shell: bash -l {0}
       run: |
-        conda install -y -c conda-forge ta-lib python-ta-lib
+        conda install -y -c conda-forge ta-lib
         python -m pip install --upgrade pip
-        pip install -r requirements.txt --no-deps
+        grep -v -E '^(ta-lib|TA-Lib)\b' requirements.txt > requirements-ci.txt
+        pip install -r requirements-ci.txt
 
     - name: Lint with flake8
       shell: bash -l {0}
